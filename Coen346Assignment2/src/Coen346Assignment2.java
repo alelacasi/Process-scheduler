@@ -18,24 +18,22 @@ import java.util.concurrent.TimeUnit;
 import javax.xml.crypto.Data;
 
 /*
-
 	Still need to implement Write to File
 	Still need to implement proper display of output
 	Still need to improve the array comparison
 	Currently only done as RR based on coming in and does not do priority
-
 */
-public class Coen346Assignment2 {
+public class Main {
 	static Semaphore AllowRobin=new Semaphore(1);
 	static Semaphore AllowQ = new Semaphore(1);
-	static LinkedList<Process> priorityQ = new LinkedList<>();	//Queue with whole thread info, make class? Arrive time, Run time, Wait time, Completion time
+	static LinkedList<Process> readyQueue = new LinkedList<>();	//Queue with whole thread info, make class? Arrive time, Run time, Wait time, Completion time
 	static LinkedList<Process> waitQ = new LinkedList<>();
 	// critical time of system 
 	static double time = 0;
 
 	
 	public static void main(String[] args) {
-		int length = 0;
+		int length = 4;
 		
 		String s="";
 		try {
@@ -78,7 +76,16 @@ public class Coen346Assignment2 {
 			}catch (IOException e) {
 				out.println("File not found");
 			}
-		
+			
+			arr_arrive[0] = 1;
+			arr_execut[0] = 50;
+			arr_arrive[1] = 2;
+			arr_execut[1] = 3;
+			arr_arrive[2] = 3;
+			arr_execut[2] = 1;
+			arr_arrive[3] = 45;
+			arr_execut[3] = 20;
+			
 			//Check values of Arrive and Execute
 			out.println("Array: ");
 		
@@ -108,7 +115,7 @@ public class Coen346Assignment2 {
 		    for(int i=0;i<waitQ.size();i++) {
 		    	//waitQ.get(i).printProcess();
 		    	if(waitQ.get(i).getArrivalTime()<=time) {
-		    		priorityQ.add(waitQ.get(i));
+		    		readyQueue.add(waitQ.get(i));
 		    		//printQ();
 		    	}
 		    	
@@ -156,7 +163,8 @@ public class Coen346Assignment2 {
 		}
 		public void run() {
 			
-			while(runTime!=0 && !priorityQ.isEmpty()) {
+			while(runTime!=0) {
+				
 				//Check execution queue every time
 				try {
 					AllowQ.acquire();
@@ -164,8 +172,10 @@ public class Coen346Assignment2 {
 				}catch (InterruptedException e) {e.printStackTrace();}finally{
 					AllowQ.release();
 				}
+				
+				if(!readyQueue.isEmpty()) {	
 				//should this field be inside the semaphore block?
-				if(priorityQ.getFirst().getProcessNumber()==process) {
+				if(readyQueue.getFirst().getProcessNumber()==process) {
 					try {				
 						//Round Robin logic
 						AllowRobin.acquire();
@@ -175,7 +185,7 @@ public class Coen346Assignment2 {
 						if (arrivalTime <= time) {
 							//Starvation avoidance, do RR until
 						  if (q<0.6) {  //runTime > 0 OR q<quantum
-							  //Do RR
+							  //Let process finish
 						      //flag = false; 
 						      if (runTime > 0.1) { 
 						
@@ -201,19 +211,20 @@ public class Coen346Assignment2 {
 						          //seq += "->" + p[i]; 
 						      }
 						      
-						      priorityQ.getFirst().setProcess(process, arrivalTime, runTime);
+						      readyQueue.getFirst().setProcess(process, arrivalTime, runTime);
 						      
 						  }else {
 							  //do priority on Size
-							  checkQ();
-							  if(priorityQ.getFirst().getProcessNumber()==process) {
+							 
+							  //if(readyQueue.getFirst().getProcessNumber()==process) {
 							      if (runTime > 0.1) { 
-										
+							    	  //readyQueue.getFirst().printProcess();
 							          // make decrease the b time 
 							          time = time + q; 
 							          runTime = runTime - q; 
 							          //arrTime = arrTime + q; 
 							          //seq += "->" + p[i]; 
+							          //readyQueue.getFirst().printProcess();
 							      } 
 							      else { 
 							
@@ -230,9 +241,15 @@ public class Coen346Assignment2 {
 							          // add sequence 
 							          //seq += "->" + p[i]; 
 							      }
-							      
-							      priorityQ.getFirst().setProcess(process, arrivalTime, runTime);
-							} 
+							      //readyQueue.getFirst().printProcess();
+							      readyQueue.getFirst().setProcess(process, arrivalTime, runTime);
+							      readyQueue.getFirst().printProcess();
+							      readyQueue.getFirst().printProcess();
+								
+								out.println("Time "+(int)time+ ", Process "+process+ 
+										" , Execution time "+ /*rounded3+"-"+ rounded2+" = "+*/ q);
+							  
+							  checkQ();
 						  } 
 						// if no process arrived
 						}else if (arrivalTime > time) { 
@@ -240,9 +257,9 @@ public class Coen346Assignment2 {
 						}
 						
 						if(runTime == 0) {
-							out.println("Time "+(int)time+ ", Process "+priorityQ.getFirst().getProcessNumber()+" is Done.");
+							out.println("Time "+(int)time+ ", Process "+readyQueue.getFirst().getProcessNumber()+" is Done.");
 							printQ();
-							priorityQ.removeFirst();
+							readyQueue.removeFirst();
 							printQ();
 							AllowRobin.release();
 							//Thread.sleep(1000000000);
@@ -252,19 +269,19 @@ public class Coen346Assignment2 {
 							//checkArrival();
 
 							
-							BigDecimal bd1 = new BigDecimal(priorityQ.getFirst().getExecuteTime());
+							BigDecimal bd1 = new BigDecimal(readyQueue.getFirst().getExecuteTime());
 							bd1 = bd1.round(new MathContext(3));
 							double rounded1 = bd1.doubleValue();
 							BigDecimal bd2 = new BigDecimal(q);
 							bd2 = bd2.round(new MathContext(3));
 							double rounded2 = bd2.doubleValue();
 							
-							BigDecimal bd3 = new BigDecimal(q+ priorityQ.getFirst().getExecuteTime());
+							BigDecimal bd3 = new BigDecimal(q+ readyQueue.getFirst().getExecuteTime());
 							bd3 = bd3.round(new MathContext(3));
 							double rounded3 = bd3.doubleValue();
 							
 							
-							out.println("Time "+(int)time+ ", Process "+priorityQ.getFirst().getProcessNumber()+ 
+							out.println("Time "+(int)time+ ", Process "+readyQueue.getFirst().getProcessNumber()+ 
 									" , Execution time "+ /*rounded3+"-"+ rounded2+" = "+*/ rounded1);
 						}
 
@@ -280,9 +297,12 @@ public class Coen346Assignment2 {
 					Thread.sleep(50);
 				} catch (InterruptedException e) {e.printStackTrace();}
 				
+			}else{
+				time++;
+			}
 			}
 			
-			if(priorityQ.isEmpty()) {
+			if(readyQueue.isEmpty()) {
 				return;
 			}
 		}
@@ -301,11 +321,11 @@ public class Coen346Assignment2 {
 					//break;
 				}
 				//If priority does not contain value, add to queue
-				else if(!priorityQ.contains(waitQ.get(i))) {
-					priorityQ.addFirst(waitQ.get(i));
+				else if(!readyQueue.contains(waitQ.get(i))) {
+					readyQueue.addFirst(waitQ.get(i));
 					//printQ();
 					
-					t = new Thread(new MyThread(priorityQ.getFirst()));
+					t = new Thread(new MyThread(readyQueue.getFirst()));
 				}else {
 					//out.println("ELSE " +waitQ.get(i).getProcessNumber());
 				}
@@ -318,16 +338,16 @@ public class Coen346Assignment2 {
 	public static void checkQ() {
 		printQ();
 		//out.println("Check Q");
-		for(int i=1;i<priorityQ.size();i++) {
+		for(int i=1;i<readyQueue.size();i++) {
 			//If time for 1>2, switch
-			if(priorityQ.get(i-1).getExecuteTime()>priorityQ.get(i).getExecuteTime()) {
-				Process holder = priorityQ.get(i);
-				priorityQ.remove(i);
+			if(readyQueue.get(i-1).getExecuteTime()>readyQueue.get(i).getExecuteTime()) {
+				Process holder = readyQueue.get(i);
+				readyQueue.remove(i);
 				printQ();
 				
-				for(int j=0;j<priorityQ.size();j++) {	
-					if(holder.getExecuteTime()<priorityQ.get(j).getExecuteTime()) {
-						priorityQ.add(j, holder);
+				for(int j=0;j<readyQueue.size();j++) {	
+					if(holder.getExecuteTime()<readyQueue.get(j).getExecuteTime()) {
+						readyQueue.add(j, holder);
 						printQ();
 						break;
 					}
@@ -338,12 +358,12 @@ public class Coen346Assignment2 {
 	
 	public static void printQ() {
 		//out.println("Ready Queue: ");
-	    for(int i=0; i<priorityQ.size(); i++) {
+	    for(int i=0; i<readyQueue.size(); i++) {
 	    	//priorityQ.get(i).printProcess();
 	    }
-		for (int i=0;i<priorityQ.size();i++) {
-			out.print(priorityQ.get(i).getProcessNumber());
-			if(i+1!=priorityQ.size()) {
+		for (int i=0;i<readyQueue.size();i++) {
+			out.print(readyQueue.get(i).getProcessNumber());
+			if(i+1!=readyQueue.size()) {
 				out.print(" -> ");
 			}
 		}out.println();
@@ -399,6 +419,4 @@ public class Process {
 	public double getExecuteTime() {
 		return executTime;
 	}
-
 }*/
-
